@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+</head>
+<body>
+	<p>
+		WebSockets example streaming letters of classic literary works every 1ms
+	</p>
+	<select id="text-selector">
+		{% for text in texts %}
+			<option>{{ text }}</option>
+		{% end %}
+	</select>
+	<button id="button" onclick="start()">Start stream</button>
+	<br />
+	<div>
+		<p>
+			<strong>Connection status:</strong>
+			<span id="connection-output"></span>
+		</p>
+		<p>
+			<strong>Update frequency:</strong>
+			<span id="timer-output"></span>
+		</p>
+		<p>
+			<strong>Output:</strong>
+			<div id="message-output">
+				<span></span>
+			</div>
+		</p>
+	</div>
+
+	<script type="text/javascript">
+		function updateTimer(node) {
+			var now = new Date().getTime();
+
+			if (this.lastUpdate) {
+				node.innerHTML = now - lastUpdate + "ms";
+			}
+
+			this.lastUpdate = now;
+		}
+
+		window.onload = function() {
+			var connectionOutput = document.getElementById("connection-output");
+			var messageContainer = document.querySelector("#message-output");
+			var messageOutput = messageContainer.querySelector("span")
+			var timeOutput = document.getElementById("timer-output");
+			var textSelector = document.getElementById("text-selector");
+			var toggleButton = document.getElementById("button");
+			var ws = null;
+
+			window.start = function() {
+				ws = new WebSocket("ws://localhost:8080/stream?Id=123456789");
+
+				ws.onopen = function() {
+					connectionOutput.innerHTML = "Connected";
+
+					// Tell the server who we want to stream
+					ws.send(textSelector.value)
+				};
+
+				ws.onmessage = function(e) {
+					updateTimer(timeOutput);
+
+					messageOutput.innerHTML += e.data;
+
+					// Reset every x letters
+					if (messageOutput.innerHTML.length > 1000) {
+						messageContainer.appendChild(
+							messageOutput = document.createElement("span")
+						);
+					}
+				};
+
+				ws.onclose = function() {
+					connectionOutput.innerHTML = "Connection is closed...";
+				};
+
+				// Switch the button over
+				toggleButton.innerHTML = "Stop stream";
+				toggleButton.onclick = window.stop;
+			};
+
+			window.stop = function() {
+				ws.close();
+
+				// Switch the button over
+				toggleButton.innerHTML = "Start stream";
+				toggleButton.onclick = window.start;
+			};
+		};
+	</script>
+</body>
+</html>
